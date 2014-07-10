@@ -1,0 +1,4 @@
+#!/bin/bash
+MOCHA=`which mocha`
+
+"$MOCHA" --compilers coffee:coffee-script -t 10000 -r should -R spec tests/*.coffee

@@ -1,0 +1,392 @@
+<!DOCTYPE html>  <html> <head>   <title>psn_api.coffee</title>   <meta http-equiv="content-type" content="text/html; charset=UTF-8">   <link rel="stylesheet" media="all" href="docco.css" /> </head> <body>   <div id="container">     <div id="background"></div>            <div id="jump_to">         Jump To &hellip;         <div id="jump_wrapper">           <div id="jump_page">                                           <a class="source" href="api_keys.html">                 api_keys.coffee               </a>                                           <a class="source" href="cookie.html">                 cookie.coffee               </a>                                           <a class="source" href="cookie_jar.html">                 cookie_jar.coffee               </a>                                           <a class="source" href="psn_api.html">                 psn_api.coffee               </a>                                           <a class="source" href="steam_api.html">                 steam_api.coffee               </a>                                           <a class="source" href="turbine.html">                 turbine.coffee               </a>                                           <a class="source" href="xbox_api.html">                 xbox_api.coffee               </a>                                           <a class="source" href="xbox_page.html">                 xbox_page.coffee               </a>                        </div>         </div>       </div>          <table cellpadding="0" cellspacing="0">       <thead>         <tr>           <th class="docs">             <h1>               psn_api.coffee             </h1>           </th>           <th class="code">           </th>         </tr>       </thead>       <tbody>                               <tr id="section-1">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-1">&#182;</a>               </div>                            </td>             <td class="code">               <div class="highlight"><pre><span class="nv">Turbine = </span><span class="nx">require</span> <span class="s2">&quot;#{__dirname}/turbine&quot;</span>
+<span class="nv">CookieJar = </span><span class="nx">require</span> <span class="s2">&quot;#{__dirname}/cookie_jar&quot;</span>
+<span class="nv">Cookie = </span><span class="nx">require</span> <span class="s2">&quot;#{__dirname}/cookie&quot;</span>
+<span class="nv">jsdom = </span><span class="nx">require</span> <span class="s1">&#39;jsdom&#39;</span>
+<span class="nv">winston = </span><span class="nx">require</span> <span class="s1">&#39;winston&#39;</span>
+<span class="nv">argue = </span><span class="nx">require</span> <span class="s1">&#39;argue&#39;</span>
+<span class="nv">prettyjson = </span><span class="nx">require</span> <span class="s1">&#39;prettyjson&#39;</span>
+<span class="nv">config = </span><span class="nx">require</span> <span class="s1">&#39;../config&#39;</span>
+<span class="nv">async = </span><span class="nx">require</span> <span class="s1">&#39;async&#39;</span>
+<span class="nv">_ = </span><span class="nx">require</span> <span class="s1">&#39;underscore&#39;</span>
+<span class="nx">winston</span><span class="p">.</span><span class="nx">cli</span><span class="p">()</span></pre></div>             </td>           </tr>                               <tr id="section-2">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-2">&#182;</a>               </div>               <p>Useful for debugging. Just a simple wrapper to
+show objects in a nice way.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="nv">puts = </span><span class="nf">(d) -&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">d</span></pre></div>             </td>           </tr>                               <tr id="section-3">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-3">&#182;</a>               </div>               <p>The <code>psn_api</code> connects to PSN and scrapes data
+from their site. No authentication is required
+to pull the data.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="k">class</span> <span class="nx">psn_api</span></pre></div>             </td>           </tr>                               <tr id="section-4">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-4">&#182;</a>               </div>               <p>Our collection of users</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">user_pool = </span><span class="p">[]</span>
+
+  <span class="nv">version: </span><span class="s1">&#39;0.0.3&#39;</span></pre></div>             </td>           </tr>                               <tr id="section-5">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-5">&#182;</a>               </div>               <p>Prefix all requests with this URL</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">url_prefix: </span><span class="s1">&#39;http://us.playstation.com&#39;</span>  
+  <span class="nv">debug: </span><span class="kc">no</span>
+
+  <span class="nv">constructor: </span><span class="o">-&gt;</span>
+    <span class="nx">@user</span> <span class="nx">config</span><span class="p">.</span><span class="nx">psn_users</span>
+
+  <span class="nv">user: </span><span class="nf">(username, password) -&gt;</span>
+    <span class="k">if</span> <span class="nx">_</span><span class="p">.</span><span class="nx">isArray</span> <span class="nx">username</span>
+      <span class="nv">username = </span><span class="p">(</span><span class="nx">_</span><span class="p">.</span><span class="nx">defaults</span><span class="p">(</span><span class="nx">user</span><span class="p">,</span> <span class="nv">jar: </span><span class="k">new</span> <span class="nx">CookieJar</span><span class="p">)</span> <span class="k">for</span> <span class="nx">user</span> <span class="k">in</span> <span class="nx">username</span><span class="p">)</span>
+      <span class="nv">user_pool = </span><span class="nx">_</span><span class="p">.</span><span class="nx">union</span> <span class="nx">username</span><span class="p">,</span> <span class="nx">user_pool</span>
+    <span class="k">else</span>
+      <span class="nx">user_pool</span><span class="p">.</span><span class="nx">push</span> <span class="nv">name: </span><span class="nx">username</span><span class="p">,</span> <span class="nv">password: </span><span class="nx">password</span><span class="p">,</span> <span class="nv">jar: </span><span class="k">new</span> <span class="nx">CookieJar</span>
+  
+  <span class="nv">get: </span><span class="nf">(args...) -&gt;</span>
+    <span class="nv">signature = </span><span class="nx">argue</span> <span class="nx">args</span>
+    <span class="nv">opts = </span><span class="p">{}</span>
+
+    <span class="k">switch</span> <span class="nx">signature</span></pre></div>             </td>           </tr>                               <tr id="section-6">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-6">&#182;</a>               </div>               <p>signature: '/foo'</p>             </td>             <td class="code">               <div class="highlight"><pre>      <span class="k">when</span> <span class="s1">&#39;s&#39;</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;callback required&#39;</span>
+        <span class="k">return</span> <span class="kc">no</span></pre></div>             </td>           </tr>                               <tr id="section-7">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-7">&#182;</a>               </div>               <p>signature: '/foo', function(){}</p>             </td>             <td class="code">               <div class="highlight"><pre>      <span class="k">when</span> <span class="s1">&#39;sf&#39;</span>
+        <span class="nv">opts =</span>
+          <span class="nv">url: </span><span class="nx">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+          <span class="nv">done: </span><span class="nx">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span></pre></div>             </td>           </tr>                               <tr id="section-8">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-8">&#182;</a>               </div>               <p>signature: {}, function(){}</p>             </td>             <td class="code">               <div class="highlight"><pre>      <span class="k">when</span> <span class="s1">&#39;of&#39;</span>
+        <span class="nv">opts = </span><span class="nx">_</span><span class="p">.</span><span class="nx">extend</span> <span class="nx">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">{</span><span class="nv">done: </span><span class="nx">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]}</span></pre></div>             </td>           </tr>                               <tr id="section-9">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-9">&#182;</a>               </div>               <p>unknown signature</p>             </td>             <td class="code">               <div class="highlight"><pre>      <span class="k">else</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;improper invocation&#39;</span>
+        <span class="k">return</span> <span class="kc">no</span></pre></div>             </td>           </tr>                               <tr id="section-10">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-10">&#182;</a>               </div>               <p>A request is useless without a URL, so we return.</p>             </td>             <td class="code">               <div class="highlight"><pre>    <span class="nx">unless</span> <span class="nx">_</span><span class="p">.</span><span class="nx">has</span> <span class="nx">opts</span><span class="p">,</span> <span class="s1">&#39;url&#39;</span>
+      <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;url missing&#39;</span>
+      <span class="k">return</span>
+
+    <span class="nv">options = </span><span class="nx">_</span><span class="p">.</span><span class="nx">defaults</span> <span class="nx">opts</span><span class="p">,</span>
+      <span class="nv">user: </span><span class="kc">no</span>
+      <span class="nv">payload: </span><span class="kc">undefined</span>
+      <span class="nv">prefix: </span><span class="p">(</span><span class="nx">@url_prefix</span> <span class="k">if</span> <span class="nx">opts</span><span class="p">.</span><span class="nx">url</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">().</span><span class="nx">indexOf</span><span class="p">(</span><span class="s1">&#39;http&#39;</span><span class="p">)</span> <span class="o">is</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">or</span> <span class="s1">&#39;&#39;</span>
+      <span class="nv">done: </span><span class="nf">(err, data) -&gt;</span> <span class="k">return</span>
+
+    <span class="nv">options.url = </span><span class="nx">options</span><span class="p">.</span><span class="nx">prefix</span> <span class="o">+</span> <span class="nx">options</span><span class="p">.</span><span class="nx">url</span>
+
+    <span class="nx">unless</span> <span class="nx">_</span><span class="p">.</span><span class="nx">isObject</span> <span class="nx">options</span><span class="p">.</span><span class="nx">user</span>
+      <span class="k">if</span> <span class="nx">user_pool</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="nv">options.user = </span><span class="nx">user_pool</span><span class="p">[</span><span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="nb">Math</span><span class="p">.</span><span class="nx">random</span><span class="p">()</span> <span class="o">*</span> <span class="nx">user_pool</span><span class="p">.</span><span class="nx">length</span><span class="p">)]</span>
+      <span class="k">else</span></pre></div>             </td>           </tr>                               <tr id="section-11">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-11">&#182;</a>               </div>               <p>While still warranting an error, its okay for the user pool
+to be empty</p>             </td>             <td class="code">               <div class="highlight"><pre>        <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;user pool is empty&#39;</span></pre></div>             </td>           </tr>                               <tr id="section-12">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-12">&#182;</a>               </div>               <p>Since the USER has been found, we can set the jar.</p>             </td>             <td class="code">               <div class="highlight"><pre>    <span class="nv">options.jar = </span><span class="nx">options</span><span class="p">.</span><span class="nx">user</span><span class="p">.</span><span class="nx">jar</span>
+
+
+    <span class="nx">Turbine</span> <span class="nx">options</span><span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+      <span class="k">if</span> <span class="nx">err</span>
+        <span class="nx">options</span><span class="p">.</span><span class="nx">done</span> <span class="nx">err</span><span class="p">,</span> <span class="p">{},</span> <span class="s1">&#39;&#39;</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;a psn error occured&#39;</span><span class="p">,</span> <span class="nx">err</span>
+        <span class="k">return</span>
+
+      <span class="k">if</span> <span class="nx">body</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="s1">&#39;loginWindow();&#39;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">info</span> <span class="s1">&#39;psn login page&#39;</span> 
+        <span class="nx">login</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">options</span><span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span></pre></div>             </td>           </tr>                               <tr id="section-13">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-13">&#182;</a>               </div>               <p>retry original request</p>             </td>             <td class="code">               <div class="highlight"><pre>          <span class="nx">Turbine</span>
+            <span class="nv">url: </span><span class="nx">options</span><span class="p">.</span><span class="nx">url</span>
+            <span class="nv">referer: </span><span class="nx">options</span><span class="p">.</span><span class="nx">referer</span>
+            <span class="nv">jar: </span><span class="nx">options</span><span class="p">.</span><span class="nx">jar</span>
+            <span class="nv">form: </span><span class="nx">options</span><span class="p">.</span><span class="nx">form</span>
+          <span class="p">,</span> <span class="nx">options</span><span class="p">.</span><span class="nx">done</span>
+      <span class="k">else</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">info</span> <span class="s1">&#39;login NOT required&#39;</span>
+        <span class="nx">options</span><span class="p">.</span><span class="nx">done</span> <span class="kc">null</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+
+  <span class="nv">login = </span><span class="p">(</span><span class="nx">res</span><span class="p">,</span> <span class="nx">options</span><span class="p">,</span> <span class="nv">cb = </span><span class="p">(</span><span class="o">-&gt;</span><span class="p">))</span> <span class="o">-&gt;</span>
+
+    <span class="nx">Turbine</span>
+      <span class="nv">url: </span><span class="s1">&#39;https://account.sonyentertainmentnetwork.com/external/auth/login.action?request_locale=en_US&amp;service-entity=psn&amp;returnURL=https://us.playstation.com/uwps/PSNTicketRetrievalGenericServlet&#39;</span>
+      <span class="nv">jar: </span><span class="nx">options</span><span class="p">.</span><span class="nx">jar</span>
+    <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+      <span class="k">if</span> <span class="nx">err</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+        <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+        <span class="k">return</span>
+      <span class="nx">jsdom</span><span class="p">.</span><span class="nx">env</span>
+        <span class="nv">html: </span><span class="nx">body</span>
+        <span class="nv">scripts: </span><span class="p">[</span><span class="s1">&#39;http://cdnjs.cloudflare.com/ajax/libs/jquery/1.7.2/jquery.min.js&#39;</span><span class="p">]</span>
+      <span class="p">,</span> <span class="nf">(dom_err, window) -&gt;</span>
+        <span class="k">if</span> <span class="nx">dom_err</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+          <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+          <span class="k">return</span>
+
+        <span class="nv">$ = </span><span class="nb">window</span><span class="p">.</span><span class="nx">jQuery</span>
+
+
+        <span class="nv">formData = </span><span class="p">{}</span>
+        <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;#mainForm input&#39;</span><span class="p">).</span><span class="nx">each</span> <span class="o">-&gt;</span>
+          <span class="nv">name = </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+          <span class="nv">val = </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">val</span><span class="p">()</span>
+          <span class="nx">formData</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span> <span class="o">=</span> <span class="nx">val</span>
+        <span class="nv">formData.j_username = </span><span class="nx">options</span><span class="p">.</span><span class="nx">user</span><span class="p">.</span><span class="nx">name</span>
+        <span class="nv">formData.j_password = </span><span class="nx">options</span><span class="p">.</span><span class="nx">user</span><span class="p">.</span><span class="nx">password</span>
+        <span class="nx">puts</span> <span class="nx">formData</span>
+
+        <span class="nx">Turbine</span>
+          <span class="nv">url: </span><span class="s1">&#39;https://account.sonyentertainmentnetwork.com/external/auth/login!authenticate.action&#39;</span>
+          <span class="nv">method: </span><span class="s1">&#39;POST&#39;</span>
+          <span class="nv">jar: </span><span class="nx">options</span><span class="p">.</span><span class="nx">jar</span>
+          <span class="nv">form: </span><span class="nx">formData</span>
+        <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+          <span class="k">if</span> <span class="nx">err</span>
+            <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+            <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+            <span class="k">return</span>
+          <span class="nx">Turbine</span>
+            <span class="nv">url: </span><span class="nx">body</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/location=&#39;(.*)&#39;/</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="nv">jar: </span><span class="nx">options</span><span class="p">.</span><span class="nx">jar</span>
+          <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+            <span class="k">if</span> <span class="nx">err</span>
+              <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+              <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+              <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+              <span class="k">return</span>
+            <span class="nx">cb</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span><span class="p">)</span>
+
+  <span class="nv">games: </span><span class="p">(</span><span class="nx">profile</span><span class="p">,</span> <span class="nv">cb = </span><span class="p">(</span><span class="o">-&gt;</span><span class="p">))</span> <span class="o">-&gt;</span>
+    <span class="nv">profiler_identifier = </span><span class="s2">&quot;#{Date.now()} - psn games (#{profile}) -&quot;</span>
+    <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+    <span class="nv">trophies = </span><span class="s2">&quot;#{@url_prefix}/playstation/psn/profile/#{profile}/get_ordered_trophies_data&quot;</span>
+    <span class="nv">referer = </span><span class="s2">&quot;#{@url_prefix}/publictrophy/index.htm?onlinename=#{profile}/trophies&quot;</span></pre></div>             </td>           </tr>                               <tr id="section-14">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-14">&#182;</a>               </div>               <p>Get the page with the proper referer</p>             </td>             <td class="code">               <div class="highlight"><pre>    <span class="k">new</span> <span class="nx">Turbine</span> 
+      <span class="nv">url: </span><span class="nx">trophies</span>
+      <span class="nv">referer: </span><span class="nx">referer</span>
+    <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+      <span class="k">if</span> <span class="nx">err</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to get playstation games&#39;</span><span class="p">,</span> <span class="nx">err</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+        <span class="k">return</span> <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="p">{}</span>
+      
+      <span class="nx">jsdom</span><span class="p">.</span><span class="nx">env</span>
+        <span class="nv">html: </span><span class="nx">body</span>
+        <span class="nv">scripts: </span><span class="p">[</span><span class="s1">&#39;http://cdnjs.cloudflare.com/ajax/libs/jquery/1.7.2/jquery.min.js&#39;</span><span class="p">]</span>
+      <span class="p">,</span> <span class="nf">(dom_err, window) -&gt;</span>
+        <span class="k">if</span> <span class="nx">dom_err</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to get playstation games&#39;</span><span class="p">,</span> <span class="nx">err</span>
+          <span class="k">return</span> <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="p">{}</span>
+
+        <span class="nv">$ = </span><span class="nb">window</span><span class="p">.</span><span class="nx">jQuery</span>
+        <span class="nv">data = </span><span class="p">[]</span></pre></div>             </td>           </tr>                               <tr id="section-15">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-15">&#182;</a>               </div>               <p>each slotContent contains all the data we need</p>             </td>             <td class="code">               <div class="highlight"><pre>        <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;.slotcontent&#39;</span><span class="p">).</span><span class="nx">each</span> <span class="nf">(i, e)-&gt;</span>
+          <span class="nv">apiname = </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.gameTitleSortField&#39;</span><span class="p">).</span><span class="nx">parent</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span><span class="o">?</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">).</span><span class="nx">pop</span><span class="p">()</span>
+          <span class="nx">data</span><span class="p">.</span><span class="nx">push</span> 
+            <span class="nv">apiname: </span><span class="nx">apiname</span>
+            <span class="nv">appid: </span><span class="nx">apiname</span><span class="o">?</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">).</span><span class="nx">shift</span><span class="p">()</span> 
+            <span class="nv">tile: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.titlelogo img&#39;</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;src&#39;</span><span class="p">)</span>
+            <span class="nv">name: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.gameTitleSortField&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+            <span class="nv">progress: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.gameProgressSortField&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+            <span class="nv">trophies: </span>
+              <span class="nv">total: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.gameTrophyCountSortField&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+              <span class="nv">bronze: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.trophyholder .trophycount:first&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+              <span class="nv">silver: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.trophyholder .trophycount:nth-child(2)&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+              <span class="nv">gold: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.trophyholder .trophycount:nth-child(3)&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+              <span class="nv">platinum: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.trophyholder .trophycount:nth-child(4)&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span></pre></div>             </td>           </tr>                               <tr id="section-16">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-16">&#182;</a>               </div>               <p>Execute the callback</p>             </td>             <td class="code">               <div class="highlight"><pre>        <span class="nx">cb</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span>
+
+  
+
+
+  <span class="nv">process_achievements: </span><span class="p">(</span><span class="nx">body</span><span class="p">,</span> <span class="nv">cb = </span><span class="p">(</span><span class="o">-&gt;</span><span class="p">))</span> <span class="o">-&gt;</span>
+    <span class="nv">data = </span><span class="p">[]</span>
+
+    <span class="nx">jsdom</span><span class="p">.</span><span class="nx">env</span>
+      <span class="nv">html: </span><span class="nx">body</span>
+      <span class="nv">scripts: </span><span class="p">[</span><span class="s1">&#39;http://cdnjs.cloudflare.com/ajax/libs/jquery/1.7.2/jquery.min.js&#39;</span><span class="p">]</span>
+    <span class="p">,</span> <span class="nf">(dom_err, window) -&gt;</span>
+      <span class="k">if</span> <span class="nx">dom_err</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+      <span class="k">else</span>
+        <span class="nv">dom_err = </span><span class="kc">null</span>
+        <span class="nv">$ = </span><span class="nb">window</span><span class="p">.</span><span class="nx">jQuery</span>
+        <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;.slot&#39;</span><span class="p">).</span><span class="nx">each</span> <span class="nf">(index)-&gt;</span>
+          <span class="nv">earned_date = </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.dateEarnedSortField&#39;</span><span class="p">).</span><span class="nx">html</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+          <span class="nx">data</span><span class="p">.</span><span class="nx">push</span>
+            <span class="nv">apiname: </span><span class="s2">&quot;achievement_#{index}&quot;</span>
+            <span class="nv">tile: </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.trophyimage img&#39;</span><span class="p">).</span><span class="nx">attr</span> <span class="s1">&#39;src&#39;</span>
+            <span class="nv">name: </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.trophyTitleSortField&#39;</span><span class="p">).</span><span class="nx">html</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+            <span class="nv">description: </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.subtext&#39;</span><span class="p">).</span><span class="nx">html</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+            <span class="nv">earned: </span><span class="k">if</span> <span class="nx">earned_date</span> <span class="k">then</span> <span class="kc">yes</span> <span class="k">else</span> <span class="kc">no</span>
+            <span class="nv">earned_date: </span><span class="k">if</span> <span class="nx">earned_date</span> <span class="k">then</span> <span class="nb">Date</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">earned_date</span><span class="p">)</span> <span class="k">else</span> <span class="kc">undefined</span>
+            <span class="nv">type: </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.trophyTypeSortField&#39;</span><span class="p">).</span><span class="nx">html</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">().</span><span class="nx">toLowerCase</span><span class="p">()</span>
+      </pre></div>             </td>           </tr>                               <tr id="section-17">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-17">&#182;</a>               </div>               <p>always execute the callback</p>             </td>             <td class="code">               <div class="highlight"><pre>      <span class="nx">cb</span> <span class="nx">dom_err</span><span class="p">,</span> <span class="nx">data</span></pre></div>             </td>           </tr>                               <tr id="section-18">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-18">&#182;</a>               </div>               <h1>#</h1>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">direct_achievements: </span><span class="p">(</span><span class="nx">profile</span><span class="p">,</span> <span class="nx">apiname</span><span class="p">,</span> <span class="nv">cb = </span><span class="p">(</span><span class="o">-&gt;</span><span class="p">))</span> <span class="o">-&gt;</span>
+    <span class="nv">achievements = </span><span class="s2">&quot;#{@url_prefix}/playstation/psn/profile/#{profile}/get_ordered_title_details_data&quot;</span>
+    <span class="nv">referer = </span><span class="s2">&quot;#{@url_prefix}/playstation/psn/#{profile}/trophies/#{apiname}&quot;</span>
+    <span class="k">if</span> <span class="nx">user_pool</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;</span> <span class="mi">0</span>
+      <span class="nv">user = </span><span class="nx">user_pool</span><span class="p">[</span><span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="nb">Math</span><span class="p">.</span><span class="nx">random</span><span class="p">()</span> <span class="o">*</span> <span class="nx">user_pool</span><span class="p">.</span><span class="nx">length</span><span class="p">)]</span>
+      <span class="nv">jar = </span><span class="nx">user</span><span class="p">.</span><span class="nx">jar</span>
+    <span class="k">else</span></pre></div>             </td>           </tr>                               <tr id="section-19">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-19">&#182;</a>               </div>               <p>While still warranting an error, its okay for the user pool
+to be empty</p>             </td>             <td class="code">               <div class="highlight"><pre>      <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;user pool is empty&#39;</span></pre></div>             </td>           </tr>                               <tr id="section-20">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-20">&#182;</a>               </div>               <p>Since the USER has been found, we can set the jar.</p>             </td>             <td class="code">               <div class="highlight"><pre>      <span class="nv">jar = </span><span class="k">new</span> <span class="nx">CookieJar</span>
+
+    
+    <span class="nx">async</span><span class="p">.</span><span class="nx">waterfall</span> <span class="p">[</span><span class="nf">(callback) -&gt;</span>
+      <span class="nx">Turbine</span>
+        <span class="nv">url: </span><span class="nx">achievements</span>
+        <span class="nv">referer: </span><span class="nx">referer</span>
+        <span class="nv">jar: </span><span class="nx">jar</span>
+        <span class="nv">method: </span><span class="s1">&#39;POST&#39;</span>
+        <span class="nv">form:</span>
+          <span class="nv">titleId: </span><span class="nx">apiname</span>
+          <span class="nv">sortBy: </span><span class="s1">&#39;id_asc&#39;</span>
+      <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+        <span class="k">if</span> <span class="nx">err</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;general achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+          <span class="nx">callback</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="nx">body</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="s1">&#39;loginWindow();&#39;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">debug</span> <span class="s1">&#39;login required&#39;</span>
+          <span class="nx">callback</span><span class="p">()</span>
+        <span class="k">else</span>
+          <span class="nx">process_achievements</span> <span class="nx">body</span><span class="p">,</span> <span class="nf">(err, data) -&gt;</span>
+            <span class="k">if</span> <span class="nx">err</span>
+              <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to parse achievements&#39;</span><span class="p">,</span> <span class="nx">err</span>
+              <span class="nx">callback</span> <span class="nx">err</span>
+            <span class="k">else</span>
+              <span class="nx">callback</span> <span class="mi">1</span><span class="p">,</span> <span class="nx">data</span>
+
+
+    <span class="nf">(callback) -&gt;</span>
+      <span class="nx">Turbine</span>
+        <span class="nv">url: </span><span class="s1">&#39;https://account.sonyentertainmentnetwork.com/external/auth/login.action?request_locale=en_US&amp;service-entity=psn&amp;returnURL=https://us.playstation.com/uwps/PSNTicketRetrievalGenericServlet&#39;</span>
+        <span class="nv">jar: </span><span class="nx">options</span><span class="p">.</span><span class="nx">jar</span>
+      <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+        <span class="k">if</span> <span class="nx">err</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+          <span class="nx">callback</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+          <span class="k">return</span>
+        <span class="nx">jsdom</span><span class="p">.</span><span class="nx">env</span>
+          <span class="nv">html: </span><span class="nx">body</span>
+          <span class="nv">scripts: </span><span class="p">[</span><span class="s1">&#39;http://cdnjs.cloudflare.com/ajax/libs/jquery/1.7.2/jquery.min.js&#39;</span><span class="p">]</span>
+        <span class="p">,</span> <span class="nf">(dom_err, window) -&gt;</span>
+          <span class="k">if</span> <span class="nx">dom_err</span>
+            <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+            <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+            <span class="k">return</span>
+
+          <span class="nv">$ = </span><span class="nb">window</span><span class="p">.</span><span class="nx">jQuery</span>
+
+
+          <span class="nv">formData = </span><span class="p">{}</span>
+          <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;#mainForm input&#39;</span><span class="p">).</span><span class="nx">each</span> <span class="o">-&gt;</span>
+            <span class="nv">name = </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+            <span class="nv">val = </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">val</span><span class="p">()</span>
+            <span class="nx">formData</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span> <span class="o">=</span> <span class="nx">val</span>
+          <span class="nv">formData.j_username = </span><span class="nx">options</span><span class="p">.</span><span class="nx">user</span><span class="p">.</span><span class="nx">name</span>
+          <span class="nv">formData.j_password = </span><span class="nx">options</span><span class="p">.</span><span class="nx">user</span><span class="p">.</span><span class="nx">password</span>
+
+          <span class="nx">callback</span> <span class="kc">null</span><span class="p">,</span> <span class="nx">formData</span>
+      <span class="p">,</span> <span class="nf">(formData, callback) -&gt;</span>
+        
+
+    <span class="p">],</span> <span class="nf">(args...) -&gt;</span>
+      <span class="nv">signature = </span><span class="nx">argue</span> <span class="nx">args</span>
+      <span class="k">switch</span> <span class="nx">signature</span></pre></div>             </td>           </tr>                               <tr id="section-21">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-21">&#182;</a>               </div>               <p>signature: '/foo'</p>             </td>             <td class="code">               <div class="highlight"><pre>        <span class="k">when</span> <span class="s1">&#39;s&#39;</span>
+        
+
+
+    <span class="nx">@get</span>
+      <span class="nv">url: </span><span class="nx">achievements</span>
+      <span class="nv">referer: </span><span class="nx">referer</span>
+      <span class="nv">method: </span><span class="s1">&#39;POST&#39;</span>
+      <span class="nv">form:</span>
+        <span class="nv">titleId: </span><span class="nx">apiname</span>
+        <span class="nv">sortBy: </span><span class="s1">&#39;id_asc&#39;</span>
+    <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+      
+      <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">body</span></pre></div>             </td>           </tr>                               <tr id="section-22">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-22">&#182;</a>               </div>               <h1>#</h1>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">achievements: </span><span class="p">(</span><span class="nx">profile</span><span class="p">,</span> <span class="nx">apiname</span><span class="p">,</span> <span class="nv">cb = </span><span class="p">(</span><span class="o">-&gt;</span><span class="p">))</span> <span class="o">-&gt;</span>
+    <span class="nv">profiler_identifier = </span><span class="s2">&quot;#{Date.now()} - psn achievements (#{profile}) -&quot;</span>
+    <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+
+    <span class="nv">achievements = </span><span class="s2">&quot;#{@url_prefix}/playstation/psn/profile/#{profile}/get_ordered_title_details_data&quot;</span>
+    <span class="nv">referer = </span><span class="s2">&quot;#{@url_prefix}/playstation/psn/#{profile}/trophies/#{apiname}&quot;</span>
+    <span class="nx">winston</span><span class="p">.</span><span class="nx">info</span> <span class="s1">&#39;achievements url&#39;</span><span class="p">,</span> <span class="nx">achievements</span>
+    <span class="nx">winston</span><span class="p">.</span><span class="nx">info</span> <span class="s1">&#39;referer&#39;</span><span class="p">,</span> <span class="nx">referer</span>
+
+
+    <span class="k">if</span> <span class="nx">user_pool</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;</span> <span class="mi">0</span>
+      <span class="nv">user = </span><span class="nx">user_pool</span><span class="p">[</span><span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="nb">Math</span><span class="p">.</span><span class="nx">random</span><span class="p">()</span> <span class="o">*</span> <span class="nx">user_pool</span><span class="p">.</span><span class="nx">length</span><span class="p">)]</span>
+    <span class="k">else</span></pre></div>             </td>           </tr>                               <tr id="section-23">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-23">&#182;</a>               </div>               <p>While still warranting an error, its okay for the user pool
+to be empty</p>             </td>             <td class="code">               <div class="highlight"><pre>      <span class="nv">user =</span>
+        <span class="nv">name: </span><span class="s1">&#39;&#39;</span>
+        <span class="nv">pass: </span><span class="s1">&#39;&#39;</span>
+        <span class="nv">jar: </span><span class="k">new</span> <span class="nx">CookieJar</span>
+      <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;user pool is empty&#39;</span>
+
+    <span class="nx">Turbine</span>
+      <span class="nv">url: </span><span class="s1">&#39;https://account.sonyentertainmentnetwork.com/external/auth/login.action?request_locale=en_US&amp;service-entity=psn&amp;returnURL=https://us.playstation.com/uwps/PSNTicketRetrievalGenericServlet&#39;</span>
+      <span class="nv">jar: </span><span class="nx">user</span><span class="p">.</span><span class="nx">jar</span>
+    <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+      <span class="k">if</span> <span class="nx">err</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+        <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+        <span class="k">return</span>
+
+      <span class="nx">jsdom</span><span class="p">.</span><span class="nx">env</span>
+        <span class="nv">html: </span><span class="nx">body</span>
+        <span class="nv">scripts: </span><span class="p">[</span><span class="s1">&#39;http://cdnjs.cloudflare.com/ajax/libs/jquery/1.7.2/jquery.min.js&#39;</span><span class="p">]</span>
+      <span class="p">,</span> <span class="nf">(dom_err, window) -&gt;</span>
+        <span class="k">if</span> <span class="nx">dom_err</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+          <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+          <span class="k">return</span>
+
+        <span class="nv">$ = </span><span class="nb">window</span><span class="p">.</span><span class="nx">jQuery</span>
+
+        <span class="nv">formData = </span><span class="p">{}</span>
+        <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;#mainForm input&#39;</span><span class="p">).</span><span class="nx">each</span> <span class="o">-&gt;</span>
+          <span class="nv">name = </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+          <span class="nv">val = </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">val</span><span class="p">()</span>
+          <span class="nx">formData</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span> <span class="o">=</span> <span class="nx">val</span>
+        <span class="nv">formData.j_username = </span><span class="nx">user</span><span class="p">.</span><span class="nx">name</span>
+        <span class="nv">formData.j_password = </span><span class="nx">user</span><span class="p">.</span><span class="nx">password</span>
+
+        <span class="nx">Turbine</span>
+          <span class="nv">url: </span><span class="s1">&#39;https://account.sonyentertainmentnetwork.com/external/auth/login!authenticate.action&#39;</span>
+          <span class="nv">method: </span><span class="s1">&#39;POST&#39;</span>
+          <span class="nv">jar: </span><span class="nx">user</span><span class="p">.</span><span class="nx">jar</span>
+          <span class="nv">form: </span><span class="nx">formData</span>
+        <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+          <span class="k">if</span> <span class="nx">err</span>
+            <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+            <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+            <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+            <span class="k">return</span>
+
+          <span class="nx">Turbine</span>
+            <span class="nv">url: </span><span class="nx">body</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/location=&#39;(.*)&#39;/</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="nv">jar: </span><span class="nx">user</span><span class="p">.</span><span class="nx">jar</span>
+          <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+            <span class="k">if</span> <span class="nx">err</span>
+              <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+              <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+              <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+              <span class="k">return</span>
+
+            <span class="nx">Turbine</span>
+              <span class="nv">url: </span><span class="nx">achievements</span>
+              <span class="nv">referer: </span><span class="nx">referer</span>
+              <span class="nv">jar: </span><span class="nx">user</span><span class="p">.</span><span class="nx">jar</span>
+              <span class="nv">method: </span><span class="s1">&#39;POST&#39;</span>
+              <span class="nv">form:</span>
+                <span class="nv">titleId: </span><span class="nx">apiname</span>
+                <span class="nv">sortBy: </span><span class="s1">&#39;id_asc&#39;</span>
+            <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+              <span class="k">if</span> <span class="nx">err</span>
+                <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+                <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+                <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+                <span class="k">return</span>
+
+              <span class="nv">data = </span><span class="p">[]</span>
+
+              <span class="nx">jsdom</span><span class="p">.</span><span class="nx">env</span>
+                <span class="nv">html: </span><span class="nx">body</span>
+                <span class="nv">scripts: </span><span class="p">[</span><span class="s1">&#39;http://cdnjs.cloudflare.com/ajax/libs/jquery/1.7.2/jquery.min.js&#39;</span><span class="p">]</span>
+              <span class="p">,</span> <span class="nf">(dom_err, window) -&gt;</span>
+                <span class="k">if</span> <span class="nx">dom_err</span>
+                  <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;PSN achievement error&#39;</span><span class="p">,</span> <span class="nx">err</span>
+                  <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+                  <span class="nx">cb</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span>
+                  <span class="k">return</span>
+
+                <span class="nv">$ = </span><span class="nb">window</span><span class="p">.</span><span class="nx">jQuery</span>
+                <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;.slot&#39;</span><span class="p">).</span><span class="nx">each</span> <span class="nf">(index)-&gt;</span>
+                  <span class="nv">earned_date = </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.dateEarnedSortField&#39;</span><span class="p">).</span><span class="nx">html</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+                  <span class="nx">data</span><span class="p">.</span><span class="nx">push</span>
+                    <span class="nv">apiname: </span><span class="s2">&quot;achievement_#{index}&quot;</span>
+                    <span class="nv">tile: </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.trophyimage img&#39;</span><span class="p">).</span><span class="nx">attr</span> <span class="s1">&#39;src&#39;</span>
+                    <span class="nv">name: </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.trophyTitleSortField&#39;</span><span class="p">).</span><span class="nx">html</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+                    <span class="nv">description: </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.subtext&#39;</span><span class="p">).</span><span class="nx">html</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+                    <span class="nv">earned: </span><span class="k">if</span> <span class="nx">earned_date</span> <span class="k">then</span> <span class="kc">yes</span> <span class="k">else</span> <span class="kc">no</span>
+                    <span class="nv">earned_date: </span><span class="k">if</span> <span class="nx">earned_date</span> <span class="k">then</span> <span class="nb">Date</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">earned_date</span><span class="p">)</span> <span class="k">else</span> <span class="kc">undefined</span>
+                    <span class="nv">type: </span><span class="nx">$</span><span class="p">(</span><span class="err">@</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.trophyTypeSortField&#39;</span><span class="p">).</span><span class="nx">html</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">().</span><span class="nx">toLowerCase</span><span class="p">()</span>
+                <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+                <span class="nx">cb</span> <span class="kc">null</span><span class="p">,</span> <span class="nx">data</span>
+
+<span class="nv">exports = module.exports = </span><span class="k">new</span> <span class="nx">psn_api</span>
+
+</pre></div>             </td>           </tr>                </tbody>     </table>   </div> </body> </html> 

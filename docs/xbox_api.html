@@ -1,0 +1,326 @@
+<!DOCTYPE html>  <html> <head>   <title>xbox_api.coffee</title>   <meta http-equiv="content-type" content="text/html; charset=UTF-8">   <link rel="stylesheet" media="all" href="docco.css" /> </head> <body>   <div id="container">     <div id="background"></div>            <div id="jump_to">         Jump To &hellip;         <div id="jump_wrapper">           <div id="jump_page">                                           <a class="source" href="api_keys.html">                 api_keys.coffee               </a>                                           <a class="source" href="cookie.html">                 cookie.coffee               </a>                                           <a class="source" href="cookie_jar.html">                 cookie_jar.coffee               </a>                                           <a class="source" href="psn_api.html">                 psn_api.coffee               </a>                                           <a class="source" href="steam_api.html">                 steam_api.coffee               </a>                                           <a class="source" href="turbine.html">                 turbine.coffee               </a>                                           <a class="source" href="xbox_api.html">                 xbox_api.coffee               </a>                                           <a class="source" href="xbox_page.html">                 xbox_page.coffee               </a>                        </div>         </div>       </div>          <table cellpadding="0" cellspacing="0">       <thead>         <tr>           <th class="docs">             <h1>               xbox_api.coffee             </h1>           </th>           <th class="code">           </th>         </tr>       </thead>       <tbody>                               <tr id="section-1">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-1">&#182;</a>               </div>                            </td>             <td class="code">               <div class="highlight"><pre><span class="nv">xbox_page = </span><span class="nx">require</span> <span class="s2">&quot;#{__dirname}/xbox_page&quot;</span>
+<span class="nv">querystring = </span><span class="nx">require</span> <span class="s1">&#39;querystring&#39;</span>
+<span class="nv">jsdom = </span><span class="nx">require</span> <span class="s1">&#39;jsdom&#39;</span>
+<span class="nv">_ = </span><span class="nx">require</span> <span class="s1">&#39;underscore&#39;</span>
+<span class="nv">winston = </span><span class="nx">require</span> <span class="s1">&#39;winston&#39;</span>
+<span class="nv">prettyjson = </span><span class="nx">require</span> <span class="s1">&#39;prettyjson&#39;</span>
+<span class="nv">Turbine = </span><span class="nx">require</span> <span class="s2">&quot;#{__dirname}/turbine&quot;</span></pre></div>             </td>           </tr>                               <tr id="section-2">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-2">&#182;</a>               </div>               <p>This <code>xbox_api</code> connects to and scrapes data from
+XBOX Live. It will handle authentication, and can
+even accept a pool of users for authenticated
+requests.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="k">class</span> <span class="nx">xbox_api</span>
+
+  <span class="nv">version: </span><span class="s1">&#39;0.1.0&#39;</span>
+  <span class="nv">debug: </span><span class="kc">no</span>
+  </pre></div>             </td>           </tr>                               <tr id="section-3">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-3">&#182;</a>               </div>               <p>Create the user pool with as little as one user.
+To create an actual user pool, the first parameter
+should be an array of objects, with <code>name</code>, <code>password</code>, <code>gold</code>
+keys.</p>
+
+<pre><code>[{name: 'test@example.com', password: '12345', gold: true}, {...}, {...}]
+</code></pre>
+
+<p>This can be called as many times as needed, but the alternate
+outlined above is probably easier.</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">connect: </span><span class="nf">(username, password, gold = no) -&gt;</span>
+    <span class="nx">xbox_page</span><span class="p">.</span><span class="nx">user</span> <span class="nx">username</span><span class="p">,</span> <span class="nx">password</span><span class="p">,</span> <span class="nx">gold</span></pre></div>             </td>           </tr>                               <tr id="section-4">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-4">&#182;</a>               </div>               <p>Retrieve the profile information for a given gamertag, which is:</p>
+
+<ul>
+<li>gamertag</li>
+<li>gamerscore</li>
+<li>motto (if set, otherwise empty)</li>
+<li>avatar (url to the image)</li>
+<li>nickname (if set, otherwise empty)</li>
+<li>bio (if set, otherwise empty)</li>
+<li>presence (most recent entry)</li>
+<li>gamertile_small (url to the image)</li>
+</ul>
+
+<p>The callback should receive two arguments, <code>err</code> and <code>data</code>.
+<code>err</code> will be <code>null</code> unless there is an error.</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">profile: </span><span class="p">(</span><span class="nx">gamertag</span><span class="p">,</span> <span class="nv">cb = </span><span class="p">(</span><span class="o">-&gt;</span><span class="p">),</span> <span class="nx">retries</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">profiler_identifier = </span><span class="s2">&quot;#{Date.now()} - xbox profile (#{gamertag}) -&quot;</span>
+    <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+
+    <span class="nv">url = </span><span class="s1">&#39;/en-US/Profile?&#39;</span> <span class="o">+</span> <span class="nx">querystring</span><span class="p">.</span><span class="nx">stringify</span> <span class="nv">gamertag: </span><span class="nx">gamertag</span>
+    </pre></div>             </td>           </tr>                               <tr id="section-5">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-5">&#182;</a>               </div>               <p>Here we use the <code>request</code> module, since it appears</p>             </td>             <td class="code">               <div class="highlight"><pre>    <span class="nx">xbox_page</span><span class="p">.</span><span class="nx">get</span> 
+      <span class="nv">url: </span><span class="nx">url</span>
+      <span class="nv">gold: </span><span class="kc">no</span>
+    <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+      
+      <span class="k">if</span> <span class="nx">err</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to get profile&#39;</span><span class="p">,</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">err</span>
+        <span class="nx">cb</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">return</span></pre></div>             </td>           </tr>                               <tr id="section-6">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-6">&#182;</a>               </div>               <p>Create the DOM with jQuery</p>             </td>             <td class="code">               <div class="highlight"><pre>      <span class="nx">jsdom</span><span class="p">.</span><span class="nx">env</span>
+        <span class="nv">html: </span><span class="nx">body</span>
+        <span class="nv">scripts: </span><span class="p">[</span><span class="s1">&#39;http://cdnjs.cloudflare.com/ajax/libs/jquery/1.7.2/jquery.min.js&#39;</span><span class="p">]</span>
+      <span class="p">,</span> <span class="nf">(dom_err, window) -&gt;</span>
+        <span class="k">if</span> <span class="nx">dom_err</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to get profile&#39;</span><span class="p">,</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">err</span>
+          <span class="nx">cb</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="p">{})</span>
+          <span class="k">return</span>
+
+        <span class="nv">$ = </span><span class="nb">window</span><span class="p">.</span><span class="nx">jQuery</span></pre></div>             </td>           </tr>                               <tr id="section-7">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-7">&#182;</a>               </div>               <p>Unfortunately, all of this data is entirely
+DOM dependant, and a source of future failure.</p>             </td>             <td class="code">               <div class="highlight"><pre>        <span class="nv">data =</span>
+          <span class="nv">gamertag: </span><span class="nx">gamertag</span>
+          <span class="nv">gamerscore: </span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;div.gamerscore[name!=MeBarGamerScore]&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+          <span class="nv">motto: </span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;div.motto&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+          <span class="nv">avatar: </span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;img.bodyshot&#39;</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;src&#39;</span><span class="p">)</span>
+          <span class="nv">nickname: </span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;div.name div.value&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+          <span class="nv">bio: </span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;div.bio div.value&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+          <span class="nv">presence: </span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;.contextRail div.presence&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+          <span class="nv">gamertile_small: </span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;img.gamerpic:first&#39;</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;src&#39;</span><span class="p">)</span></pre></div>             </td>           </tr>                               <tr id="section-8">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-8">&#182;</a>               </div>               <p>Execute the callback</p>             </td>             <td class="code">               <div class="highlight"><pre>        <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+        <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">cb</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span></pre></div>             </td>           </tr>                               <tr id="section-9">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-9">&#182;</a>               </div>               <p>Retrieve the games for a given gamertag</p>
+
+<p>The callback should receive two arguments, <code>err</code> and <code>data</code>.
+<code>err</code> will be <code>null</code> unless there is an error.</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">games: </span><span class="p">(</span><span class="nx">gamertag</span><span class="p">,</span> <span class="nv">cb = </span><span class="p">(</span><span class="o">-&gt;</span><span class="p">),</span> <span class="nv">retries = </span><span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">profiler_identifier = </span><span class="s2">&quot;#{Date.now()} - xbox games (#{gamertag}) -&quot;</span>
+    <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+
+    <span class="nv">url = </span><span class="s1">&#39;/en-US/Activity?&#39;</span> <span class="o">+</span> <span class="nx">querystring</span><span class="p">.</span><span class="nx">stringify</span> <span class="nv">compareTo: </span><span class="nx">gamertag</span>
+    <span class="nx">xbox_page</span><span class="p">.</span><span class="nx">get</span> 
+      <span class="nv">url: </span><span class="nx">url</span>
+      <span class="nv">gold: </span><span class="kc">no</span>
+    <span class="p">,</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span><span class="p">)</span> <span class="o">=&gt;</span>
+      <span class="k">if</span> <span class="nx">err</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to get games&#39;</span><span class="p">,</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">err</span>
+        <span class="nx">cb</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">return</span></pre></div>             </td>           </tr>                               <tr id="section-10">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-10">&#182;</a>               </div>               <p>Create the DOM with jQuery</p>             </td>             <td class="code">               <div class="highlight"><pre>      <span class="nx">jsdom</span><span class="p">.</span><span class="nx">env</span>
+          <span class="nv">html: </span><span class="nx">res</span><span class="p">.</span><span class="nx">body</span>
+          <span class="nv">scripts: </span><span class="p">[</span><span class="s1">&#39;http://cdnjs.cloudflare.com/ajax/libs/jquery/1.7.2/jquery.min.js&#39;</span><span class="p">]</span>
+        <span class="p">,</span> <span class="p">(</span><span class="nx">dom_err</span><span class="p">,</span> <span class="nb">window</span><span class="p">)</span> <span class="o">=&gt;</span>
+          <span class="k">if</span> <span class="nx">dom_err</span>
+            <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+            <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to get games&#39;</span><span class="p">,</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">err</span>
+            <span class="nx">cb</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="k">return</span>
+
+          <span class="nv">$ = </span><span class="nb">window</span><span class="p">.</span><span class="nx">jQuery</span></pre></div>             </td>           </tr>                               <tr id="section-11">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-11">&#182;</a>               </div>               <p>The token is a unique identifier that comes directly
+from the page. Whenever communicating directly
+with Microsoft's "internal" API, this token is needed.</p>             </td>             <td class="code">               <div class="highlight"><pre>          <span class="nv">token = </span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;input[name=__RequestVerificationToken]&#39;</span><span class="p">).</span><span class="nx">val</span><span class="p">()</span></pre></div>             </td>           </tr>                               <tr id="section-12">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-12">&#182;</a>               </div>               <p>Communicating directly with the "internal" API
+gives us straight JSON, making things simpler.</p>             </td>             <td class="code">               <div class="highlight"><pre>          <span class="nv">url = </span><span class="s1">&#39;/en-US/Activity/Summary?&#39;</span> <span class="o">+</span> <span class="nx">querystring</span><span class="p">.</span><span class="nx">stringify</span> <span class="nv">compareTo: </span><span class="nx">gamertag</span>
+          <span class="nv">payload =</span>
+            <span class="s1">&#39;__RequestVerificationToken&#39;</span><span class="o">:</span> <span class="nx">token</span>
+
+          <span class="nx">Turbine</span>
+            <span class="nv">url: </span><span class="nx">xbox_page</span><span class="p">.</span><span class="nx">url_prefix</span> <span class="o">+</span> <span class="nx">url</span>
+            <span class="nv">method: </span><span class="s1">&#39;post&#39;</span>
+            <span class="nv">form: </span><span class="nx">payload</span>
+            <span class="nv">jar: </span><span class="nx">res</span><span class="p">.</span><span class="nx">req</span><span class="p">.</span><span class="nx">jar</span>
+          <span class="p">,</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span><span class="p">)</span> <span class="o">=&gt;</span>
+            <span class="k">if</span> <span class="nx">err</span>
+              <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+              <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to get games&#39;</span><span class="p">,</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">err</span>
+              <span class="nx">cb</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="p">{})</span>
+              <span class="k">return</span>
+
+            <span class="nv">json = </span><span class="nx">JSON</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">body</span><span class="p">)</span>
+            <span class="nv">game_data = </span><span class="nx">json</span><span class="o">?</span><span class="p">.</span><span class="nx">Data</span>
+            <span class="nv">data = </span><span class="p">{}</span>
+            <span class="k">if</span> <span class="nx">game_data</span><span class="o">?</span>
+              <span class="nv">data = </span>
+                <span class="nv">data: </span><span class="nx">game_data</span>
+                <span class="nv">gamertag: </span><span class="nx">game_data</span><span class="p">.</span><span class="nx">Players</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">Gamertag</span>
+                <span class="nv">gamertile_large: </span><span class="nx">game_data</span><span class="p">.</span><span class="nx">Players</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">Gamerpic</span>
+                <span class="nv">gamerscore: </span><span class="nx">game_data</span><span class="p">.</span><span class="nx">Players</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">Gamerscore</span>
+                <span class="nv">progress: </span><span class="nx">game_data</span><span class="p">.</span><span class="nx">Players</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">PercentComplete</span>
+                <span class="nv">games: </span><span class="p">[]</span></pre></div>             </td>           </tr>                               <tr id="section-13">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-13">&#182;</a>               </div>               <p>The game list can be polluted with games that belong
+to the user that we are authenticated as, hence the filtering</p>             </td>             <td class="code">               <div class="highlight"><pre>              <span class="nv">game_list = </span><span class="nx">_</span><span class="p">.</span><span class="nx">filter</span> <span class="nx">game_data</span><span class="p">.</span><span class="nx">Games</span><span class="p">,</span> <span class="nf">(item) -&gt;</span> 
+                <span class="nx">item</span><span class="p">.</span><span class="nx">Progress</span><span class="p">[</span><span class="nx">data</span><span class="p">.</span><span class="nx">gamertag</span><span class="p">].</span><span class="nx">LastPlayed</span><span class="o">?</span>
+              </pre></div>             </td>           </tr>                               <tr id="section-14">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-14">&#182;</a>               </div>               <p>Once the list has been filtered, we can collect the games</p>             </td>             <td class="code">               <div class="highlight"><pre>              <span class="k">for</span> <span class="nx">game</span> <span class="k">in</span> <span class="nx">game_list</span>
+                <span class="nx">data</span><span class="p">.</span><span class="nx">games</span><span class="p">.</span><span class="nx">push</span>
+                  <span class="nv">appid: </span><span class="nx">game</span><span class="p">.</span><span class="nx">Id</span>
+                  <span class="nv">apiname: </span><span class="nx">game</span><span class="p">.</span><span class="nx">Id</span>
+                  <span class="nv">name: </span><span class="nx">game</span><span class="p">.</span><span class="nx">Name</span>
+                  <span class="nv">tile: </span><span class="nx">game</span><span class="p">.</span><span class="nx">BoxArt</span>
+                  <span class="nv">total_points: </span><span class="nx">game</span><span class="p">.</span><span class="nx">PossibleScore</span>
+                  <span class="nv">unlocked_points: </span><span class="nx">game</span><span class="p">.</span><span class="nx">Progress</span><span class="p">[</span><span class="nx">data</span><span class="p">.</span><span class="nx">gamertag</span><span class="p">].</span><span class="nx">Score</span>
+                  <span class="nv">unlocked_achievements: </span><span class="nx">game</span><span class="p">.</span><span class="nx">Progress</span><span class="p">[</span><span class="nx">data</span><span class="p">.</span><span class="nx">gamertag</span><span class="p">].</span><span class="nx">Achievements</span>
+              </pre></div>             </td>           </tr>                               <tr id="section-15">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-15">&#182;</a>               </div>               <p>Execute the callback</p>             </td>             <td class="code">               <div class="highlight"><pre>              <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+              <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">cb</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="nx">data</span><span class="p">.</span><span class="nx">games</span><span class="p">)</span>
+            
+            <span class="k">else</span></pre></div>             </td>           </tr>                               <tr id="section-16">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-16">&#182;</a>               </div>               <p><code>game_data</code> is empty, so we retry a few times
+just because we can.</p>             </td>             <td class="code">               <div class="highlight"><pre>              <span class="k">if</span> <span class="nx">retries</span> <span class="o">&lt;</span> <span class="mi">5</span>
+                <span class="nx">retries</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="nx">winston</span><span class="p">.</span><span class="nx">info</span> <span class="s2">&quot;empty game data, retrying (attempt #{retries})&quot;</span>
+                <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">@games</span> <span class="nx">gamertag</span><span class="p">,</span> <span class="nx">cb</span><span class="p">,</span> <span class="nx">retries</span>
+              <span class="k">else</span></pre></div>             </td>           </tr>                               <tr id="section-17">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-17">&#182;</a>               </div>               <p>Finally, we can give up and bubble the error
+to the callback.</p>             </td>             <td class="code">               <div class="highlight"><pre>                <span class="nv">game_err =</span>
+                  <span class="nv">code: </span><span class="mi">502</span>
+                  <span class="nv">message: </span><span class="s1">&#39;Unable to get games from XBOX Live&#39;</span>
+                <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">game_err</span>
+                <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="s2">&quot;xbox games (#{gamertag})&quot;</span>
+                <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">cb</span><span class="p">(</span><span class="nv">game_err: </span><span class="nx">err</span><span class="p">,</span> <span class="p">{})</span>
+            </pre></div>             </td>           </tr>                               <tr id="section-18">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-18">&#182;</a>               </div>               <p>Retrieve the achievements for a given gamertag and game_id
+The only real limitation here, is that the achievement icons
+will all be in black and white since our user probably hasn't
+actually earned these achievements.</p>
+
+<p>The callback should receive two arguments, <code>err</code> and <code>data</code>.
+<code>err</code> will be <code>null</code> unless there is an error.</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">achievements: </span><span class="p">(</span><span class="nx">gamertag</span><span class="p">,</span> <span class="nx">game_id</span><span class="p">,</span> <span class="nv">cb = </span><span class="p">(</span><span class="o">-&gt;</span><span class="p">),</span> <span class="nv">retries = </span><span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">profiler_identifier = </span><span class="s2">&quot;#{Date.now()} - xbox achievements (#{gamertag}) -&quot;</span>
+    <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+
+    <span class="nv">payload = </span>
+      <span class="nv">titleId: </span><span class="nx">game_id</span>
+      <span class="nv">compareTo: </span><span class="nx">gamertag</span>
+    <span class="nv">url = </span><span class="s1">&#39;/en-US/Activity/Details?&#39;</span> <span class="o">+</span> <span class="nx">querystring</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">payload</span><span class="p">)</span>
+    <span class="nx">xbox_page</span><span class="p">.</span><span class="nx">get</span> 
+      <span class="nv">url: </span><span class="nx">url</span>
+      <span class="nv">gold: </span><span class="kc">yes</span>
+    <span class="p">,</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span><span class="p">)</span> <span class="o">=&gt;</span>
+      <span class="k">if</span> <span class="nx">err</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to get achievements&#39;</span><span class="p">,</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">err</span>
+        <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">cb</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">return</span>
+
+      <span class="nx">Turbine</span>
+        <span class="nv">url: </span><span class="nx">xbox_page</span><span class="p">.</span><span class="nx">url_prefix</span> <span class="o">+</span> <span class="nx">url</span>
+        <span class="nv">jar: </span><span class="nx">res</span><span class="p">.</span><span class="nx">req</span><span class="p">.</span><span class="nx">jar</span>
+      <span class="p">,</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span><span class="p">)</span> <span class="o">=&gt;</span>
+        <span class="k">if</span> <span class="nx">err</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to get achievements&#39;</span><span class="p">,</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">err</span>
+          <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">cb</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="p">{})</span>
+          <span class="k">return</span></pre></div>             </td>           </tr>                               <tr id="section-19">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-19">&#182;</a>               </div>               <p>The data is actually JSON that is passed directly to
+a function in the HTML. Unfortunately, there doesn't
+seem to be a simple way to get this data directly other
+than using a regular expression.</p>             </td>             <td class="code">               <div class="highlight"><pre>        <span class="nv">achievement_data = </span><span class="nx">body</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/routes\.activity\.details\.load, (.*)\)\;/</span><span class="p">)</span>
+        <span class="nv">data = </span><span class="p">{}</span>
+        
+        <span class="k">if</span> <span class="nx">achievement_data</span><span class="o">?</span>
+          <span class="nv">achievement_data = </span><span class="nx">JSON</span><span class="p">.</span><span class="nx">parse</span> <span class="nx">achievement_data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+          <span class="nv">data =</span>
+            <span class="nv">data: </span><span class="nx">achievement_data</span>
+            <span class="nv">gamertag: </span><span class="nx">achievement_data</span><span class="p">.</span><span class="nx">Players</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">Gamertag</span>
+            <span class="nv">gamertile_large: </span><span class="nx">achievement_data</span><span class="p">.</span><span class="nx">Players</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">Gamerpic</span>
+            <span class="nv">game_count: </span><span class="nx">achievement_data</span><span class="p">.</span><span class="nx">Players</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">gamecount</span>
+            <span class="nv">percent_complete: </span><span class="nx">achievement_data</span><span class="p">.</span><span class="nx">Players</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">PercentComplete</span>
+            <span class="nv">game_id: </span><span class="nx">game_id</span>
+            <span class="nv">achievements: </span><span class="p">[]</span>
+
+          <span class="k">for</span> <span class="nx">achievement</span> <span class="k">in</span> <span class="nx">achievement_data</span><span class="p">.</span><span class="nx">Achievements</span>
+
+            <span class="nx">data</span><span class="p">.</span><span class="nx">achievements</span><span class="p">.</span><span class="nx">push</span>  
+              <span class="nv">id: </span><span class="nx">achievement</span><span class="p">.</span><span class="nx">Id</span>
+              <span class="nv">apiname: </span><span class="s2">&quot;achievement_#{achievement.Id}&quot;</span>
+              <span class="nv">name: </span><span class="nx">achievement</span><span class="p">.</span><span class="nx">Name</span>
+              <span class="nv">tile: </span><span class="nx">achievement</span><span class="p">.</span><span class="nx">TileUrl</span>
+              <span class="nv">description: </span><span class="nx">achievement</span><span class="p">.</span><span class="nx">Description</span>
+              <span class="nv">score: </span><span class="nx">achievement</span><span class="p">.</span><span class="nx">Score</span>
+              <span class="nv">hidden: </span><span class="nx">achievement</span><span class="p">.</span><span class="nx">IsHidden</span>
+              <span class="nv">earned: </span><span class="nx">_</span><span class="p">.</span><span class="nx">has</span><span class="p">(</span><span class="nx">achievement</span><span class="p">.</span><span class="nx">EarnDates</span><span class="p">,</span> <span class="nx">data</span><span class="p">.</span><span class="nx">gamertag</span><span class="p">)</span>
+              <span class="nv">earned_date: </span><span class="k">if</span> <span class="nx">_</span><span class="p">.</span><span class="nx">has</span><span class="p">(</span><span class="nx">achievement</span><span class="p">.</span><span class="nx">EarnDates</span><span class="p">,</span> <span class="nx">data</span><span class="p">.</span><span class="nx">gamertag</span><span class="p">)</span>  
+                  <span class="nx">achievement</span><span class="p">.</span><span class="nx">EarnDates</span><span class="p">[</span><span class="nx">data</span><span class="p">.</span><span class="nx">gamertag</span><span class="p">].</span><span class="nx">EarnedOn</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="s1">&#39;/Date(&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="s1">&#39;)/&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+                <span class="k">else</span> <span class="kc">undefined</span>
+          </pre></div>             </td>           </tr>                               <tr id="section-20">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-20">&#182;</a>               </div>               <p>Execute the callback</p>             </td>             <td class="code">               <div class="highlight"><pre>          <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+          <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">cb</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="nx">data</span><span class="p">.</span><span class="nx">achievements</span><span class="p">)</span>
+        <span class="k">else</span>
+          <span class="k">if</span> <span class="nx">retries</span> <span class="o">&lt;</span> <span class="mi">10</span>
+            <span class="nx">retries</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="nx">winston</span><span class="p">.</span><span class="nx">info</span> <span class="s2">&quot;empty achievement data, retrying (attempt #{retries})&quot;</span>
+            <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">@achievements</span> <span class="nx">gamertag</span><span class="p">,</span> <span class="nx">game_id</span><span class="p">,</span> <span class="nx">cb</span><span class="p">,</span> <span class="nx">retries</span>
+          <span class="k">else</span>
+            <span class="nv">ach_err =</span>
+              <span class="nv">code: </span><span class="mi">502</span>
+              <span class="nv">message: </span><span class="s1">&#39;Unable to get achievements from XBOX Live&#39;</span>
+            <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">ach_err</span>
+            <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+            <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">cb</span><span class="p">(</span><span class="nv">ach_err: </span><span class="nx">err</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span>
+        
+      </pre></div>             </td>           </tr>                               <tr id="section-21">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-21">&#182;</a>               </div>               <p>Retrieve the product detauls for a given game_id.
+This includes available downloads, their costs, and ratings.</p>
+
+<p>The callback should receive two arguments, <code>err</code> and <code>data</code>.
+<code>err</code> will be <code>null</code> unless there is an error.</p>             </td>             <td class="code">               <div class="highlight"><pre>  <span class="nv">product: </span><span class="p">(</span><span class="nx">game_id</span><span class="p">,</span> <span class="nx">cb</span> <span class="o">=</span><span class="p">(</span><span class="o">-&gt;</span><span class="p">),</span> <span class="nv">retries = </span><span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="nv">profiler_identifier = </span><span class="s2">&quot;#{Date.now()} - xbox product (#{game_id}) -&quot;</span>
+    <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+
+    <span class="nv">url = </span><span class="s2">&quot;http://marketplace.xbox.com/en-US/Title/#{game_id}&quot;</span>
+    <span class="nx">xbox_page</span><span class="p">.</span><span class="nx">get</span> 
+      <span class="nv">url: </span><span class="nx">url</span>
+      <span class="nv">gold: </span><span class="kc">no</span>
+    <span class="p">,</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">body</span><span class="p">)</span> <span class="o">=&gt;</span>
+      <span class="k">if</span> <span class="nx">err</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to get product&#39;</span><span class="p">,</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">err</span>
+        <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">cb</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">return</span></pre></div>             </td>           </tr>                               <tr id="section-22">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-22">&#182;</a>               </div>               <p>We get forwarded to a product page, and from there we can make our real request</p>             </td>             <td class="code">               <div class="highlight"><pre>      </pre></div>             </td>           </tr>                               <tr id="section-23">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-23">&#182;</a>               </div>               <p>If the response isn't what we expect, try again 
+several times before giving up.</p>             </td>             <td class="code">               <div class="highlight"><pre>      <span class="nx">unless</span> <span class="nx">_</span><span class="p">.</span><span class="nx">has</span> <span class="nx">res</span><span class="p">.</span><span class="nx">req</span><span class="p">,</span> <span class="s1">&#39;url&#39;</span>
+        <span class="k">if</span> <span class="nx">retries</span> <span class="o">&lt;</span> <span class="mi">5</span>
+          <span class="nx">retries</span> <span class="o">+=</span> <span class="mi">1</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">info</span> <span class="s2">&quot;missing actual product url, retrying (attempt #{retries})&quot;</span>
+          <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">@product</span> <span class="nx">game_id</span><span class="p">,</span> <span class="nx">cb</span><span class="p">,</span> <span class="nx">retries</span>
+          <span class="k">return</span>
+        <span class="k">else</span>
+          <span class="nv">prod_err =</span>
+            <span class="nv">code: </span><span class="mi">502</span>
+            <span class="nv">message: </span><span class="s1">&#39;Unable to get product from XBOX Live&#39;</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">prod_err</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+          <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">cb</span><span class="p">(</span><span class="nv">prod_err: </span><span class="nx">err</span><span class="p">,</span> <span class="p">{})</span>
+          <span class="k">return</span>
+      
+      <span class="nx">winston</span><span class="p">.</span><span class="nx">debug</span> <span class="s1">&#39;read landing page, attempting actual product page&#39;</span> <span class="k">if</span> <span class="nx">@debug</span>
+      <span class="nx">xbox_page</span><span class="p">.</span><span class="nx">get</span> 
+        <span class="nv">url: </span><span class="nx">res</span><span class="p">.</span><span class="nx">req</span><span class="p">.</span><span class="nx">url</span> <span class="o">+</span> <span class="s1">&#39;?nosplash=1&amp;page=1&amp;PageSize=500&#39;</span>
+      <span class="p">,</span> <span class="nf">(err, res, body) -&gt;</span>
+        <span class="k">if</span> <span class="nx">err</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+          <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to get product&#39;</span><span class="p">,</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">err</span>
+          <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">cb</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="p">{})</span>
+          <span class="k">return</span>
+
+        <span class="nx">winston</span><span class="p">.</span><span class="nx">debug</span> <span class="s1">&#39;reached actual product page&#39;</span> <span class="k">if</span> <span class="nx">@debug</span>
+        <span class="nx">jsdom</span><span class="p">.</span><span class="nx">env</span>
+            <span class="nv">html: </span><span class="nx">body</span>
+            <span class="nv">scripts: </span><span class="p">[</span><span class="s1">&#39;http://cdnjs.cloudflare.com/ajax/libs/jquery/1.7.2/jquery.min.js&#39;</span><span class="p">]</span>
+          <span class="p">,</span> <span class="nf">(dom_err, window) -&gt;</span>
+            <span class="k">if</span> <span class="nx">dom_err</span>
+              <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+              <span class="nx">winston</span><span class="p">.</span><span class="nx">error</span> <span class="s1">&#39;unable to get games&#39;</span><span class="p">,</span> <span class="nx">prettyjson</span><span class="p">.</span><span class="nx">render</span> <span class="nx">err</span>
+              <span class="nx">cb</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="p">{})</span>
+              <span class="k">return</span>
+
+            <span class="nv">$ = </span><span class="nb">window</span><span class="p">.</span><span class="nx">jQuery</span></pre></div>             </td>           </tr>                               <tr id="section-24">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-24">&#182;</a>               </div>               <p>A simple helper to convert star ratings to numbers 0-5</p>             </td>             <td class="code">               <div class="highlight"><pre>            <span class="nv">calculate_stars = </span><span class="nf">(stars) -&gt;</span>
+              <span class="nv">rating = </span><span class="mi">0</span>
+              <span class="k">if</span> <span class="nx">stars</span>
+                <span class="nx">rating</span> <span class="o">+=</span> <span class="nx">$</span><span class="p">(</span><span class="nx">stars</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.Star.Star4&#39;</span><span class="p">).</span><span class="nx">length</span>
+                <span class="nx">rating</span> <span class="o">+=</span> <span class="nx">$</span><span class="p">(</span><span class="nx">stars</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.Star.Star3&#39;</span><span class="p">).</span><span class="nx">length</span> <span class="o">*</span> <span class="mf">0.75</span>
+                <span class="nx">rating</span> <span class="o">+=</span> <span class="nx">$</span><span class="p">(</span><span class="nx">stars</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.Star.Star2&#39;</span><span class="p">).</span><span class="nx">length</span> <span class="o">*</span> <span class="mf">0.5</span>
+                <span class="nx">rating</span> <span class="o">+=</span> <span class="nx">$</span><span class="p">(</span><span class="nx">stars</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.Star.Star1&#39;</span><span class="p">).</span><span class="nx">length</span> <span class="o">*</span> <span class="mf">0.25</span>
+
+              <span class="k">return</span> <span class="nx">rating</span>
+
+            <span class="nv">data =</span>
+              <span class="nv">title: </span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;#gameDetails h1&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span>
+              <span class="nv">boxart: </span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;#ProductTitleZone .ProductBox img&#39;</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;src&#39;</span><span class="p">)</span> <span class="o">or</span> <span class="s1">&#39;&#39;</span>
+              <span class="nv">rating_count: </span><span class="nx">$</span><span class="p">(</span><span class="s1">&#39;#ProductTitleZone .UserRatingStarStrip:first .ratingCount&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+              <span class="nv">rating: </span><span class="nx">calculate_stars</span> <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;#ProductTitleZone .UserRatingStarStrip:first .UserRating&#39;</span><span class="p">)</span>
+              <span class="nv">artwork: </span><span class="p">[]</span>
+              <span class="nv">downloads: </span><span class="p">[]</span>
+            </pre></div>             </td>           </tr>                               <tr id="section-25">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-25">&#182;</a>               </div>               <p>Gather the artwork images</p>             </td>             <td class="code">               <div class="highlight"><pre>            <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;#MediaControl .TabPage img:not(.Banner):not(.boxart)&#39;</span><span class="p">).</span><span class="nx">each</span> <span class="nf">(i,e) -&gt;</span>
+              <span class="nx">data</span><span class="p">.</span><span class="nx">artwork</span><span class="p">.</span><span class="nx">push</span> <span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;src&#39;</span><span class="p">)</span>
+            </pre></div>             </td>           </tr>                               <tr id="section-26">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-26">&#182;</a>               </div>               <p>Gather the downloads</p>             </td>             <td class="code">               <div class="highlight"><pre>            <span class="nx">$</span><span class="p">(</span><span class="s1">&#39;ol.RelatedTiles li.firstgridchild&#39;</span><span class="p">).</span><span class="nx">each</span> <span class="nf">(i,e)-&gt;</span>
+              <span class="nv">download =</span>
+                <span class="nv">tile: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.RelatedIcon img&#39;</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;src&#39;</span><span class="p">)</span>
+                <span class="nv">name: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;h2 a&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+                <span class="nv">rating: </span><span class="nx">calculate_stars</span> <span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.UserRatingStarStrip:first .UserRating&#39;</span><span class="p">)</span>
+                <span class="nv">rating_count: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.UserRatingStarStrip:first .ratingCount&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+                <span class="nv">release_date: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.ReleaseDate&#39;</span><span class="p">).</span><span class="nx">html</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&lt;label&gt;.*&lt;\/label&gt;/</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">).</span><span class="nx">trim</span><span class="p">()</span>
+                <span class="nv">file_size: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.FileSize&#39;</span><span class="p">).</span><span class="nx">html</span><span class="p">()</span>
+                <span class="nv">description: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.ProductDescription&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span><span class="o">?</span><span class="p">.</span><span class="nx">trim</span><span class="p">()</span>
+                <span class="nv">price: </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.ProductPrices .ProductPrice:first&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">()</span></pre></div>             </td>           </tr>                               <tr id="section-27">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-27">&#182;</a>               </div>               <p>Here we have a collection of fixes to make the data more uniform</p>             </td>             <td class="code">               <div class="highlight"><pre>              
+              <span class="nv">download.price = </span><span class="mi">0</span> <span class="k">if</span> <span class="nx">download</span><span class="p">.</span><span class="nx">price</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">()</span> <span class="o">is</span> <span class="s1">&#39;free&#39;</span>
+              <span class="nv">download.description = </span><span class="s1">&#39;&#39;</span> <span class="k">if</span> <span class="nx">download</span><span class="p">.</span><span class="nx">description</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">()</span> <span class="o">is</span> <span class="s1">&#39;download this avatar item.&#39;</span>
+
+              <span class="nx">unless</span> <span class="nx">download</span><span class="p">.</span><span class="nx">tile</span><span class="o">?</span>
+                <span class="nv">download.tile = </span><span class="nx">$</span><span class="p">(</span><span class="nx">e</span><span class="p">).</span><span class="nx">find</span><span class="p">(</span><span class="s1">&#39;.RelatedIcon span&#39;</span><span class="p">).</span><span class="nx">attr</span><span class="p">(</span><span class="s1">&#39;title&#39;</span><span class="p">)</span>
+
+              <span class="k">if</span> <span class="nx">download</span><span class="p">.</span><span class="nx">file_size</span><span class="o">?</span>
+                <span class="nv">download.file_size = </span><span class="nx">download</span><span class="p">.</span><span class="nx">file_size</span><span class="o">?</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&lt;label&gt;.*&lt;\/label&gt;/</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">).</span><span class="nx">trim</span><span class="p">()</span></pre></div>             </td>           </tr>                               <tr id="section-28">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-28">&#182;</a>               </div>               <p>With all that done, push the download into the data</p>             </td>             <td class="code">               <div class="highlight"><pre>              <span class="nx">data</span><span class="p">.</span><span class="nx">downloads</span><span class="p">.</span><span class="nx">push</span> <span class="nx">download</span>
+            </pre></div>             </td>           </tr>                               <tr id="section-29">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-29">&#182;</a>               </div>               <p>Execute the callback</p>             </td>             <td class="code">               <div class="highlight"><pre>            <span class="nx">winston</span><span class="p">.</span><span class="nx">profile</span> <span class="nx">profiler_identifier</span>
+            <span class="nx">process</span><span class="p">.</span><span class="nx">nextTick</span> <span class="o">-&gt;</span> <span class="nx">cb</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span></pre></div>             </td>           </tr>                               <tr id="section-30">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-30">&#182;</a>               </div>               <p>Expose the xbox_api to <code>require</code> calls</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="nv">module.exports = </span><span class="k">new</span> <span class="nx">xbox_api</span>
+
+</pre></div>             </td>           </tr>                </tbody>     </table>   </div> </body> </html> 

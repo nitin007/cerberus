@@ -1,0 +1,6 @@
+logs/*
+cache/*
+.DS_Store
+Gemfile.lock
+node_modules/*
+*.js
