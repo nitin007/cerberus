@@ -64,7 +64,7 @@ class xbox_api
   #
   # This can be called as many times as needed, but the alternate
   # outlined above is probably easier.
-  connect: (username, password, gold = no) ->
+  connect: (username, password = 'splinter', gold = no) ->
     xbox_page.user username, password, gold
     return
 
@@ -127,9 +127,9 @@ class xbox_api
         # DOM dependant, and a source of future failure.
         data =
           gamertag: gamertag
-          gamerscore: $('div.gamerscore[name!=MeBarGamerScore]').text()?.trim()
+          gamerscore: $('div.gamerScore[name!=MeBarGamerScore]').text()?.trim()
           motto: $('div.motto').text()?.trim()
-          avatar: $('img.bodyshot').attr('src')
+          avatar: $('.xbox360Avatar img').attr('src')
           nickname: $('div.name div.value').text()?.trim()
           bio: $('div.bio div.value').text()?.trim()
           presence: $('.contextRail div.presence').text()?.trim()

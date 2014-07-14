@@ -6,8 +6,8 @@ module.exports =
   users: [
   #  name: 'ryan.faerman@gmail.com', password: 'rewt123', gold: yes
   #,
-    name: 'rfaerman@intergi.com', password: 'splinter'
-  ,
+    # name: 'rfaerman@intergi.com', password: 'splinter'
+  # ,
     name: 'cerberus75@gamezone.com', password: 'splinter', gold: yes
   ,
     name: 'cerberus21@gamezone.com', password: 'splinter'

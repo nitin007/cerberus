@@ -1,32 +1,32 @@
 {
-    "name": "game-network-api"
-  , "description": ""
-  , "version": "0.0.1"
-  , "private": true
-  , "author": "Ryan Faerman <rfaerman@intergi.com>"
-  , "contributors": []
-
-  , "main": "./app.coffee"
-  , "dependencies": {
-      "underscore": "1.3.3"
-    , "jsdom": "*"
-    , "express": "2.5.5"
-    , "express-namespace": "0.0.4"
-    , "express-params": "*"
-    , "winston": "*"
-    , "request": "*"
-    , "prettyjson": "*"
-    , "xml2json": "*"
-    , "nodetime": "*"
-    , "argue": "*"
-    , "async": "*"
-    , "coffee-resque": "*"
-    , "datejs": "*"
-    , "each": "*"
-  }
-  , "devDependencies": {
-      "mocha": "*"
-    , "should": "*"
-    , "docco": "*"
-  }
+  "name": "game-network-api",
+  "description": "",
+  "version": "0.0.1",
+  "private": true,
+  "author": "Ryan Faerman <rfaerman@intergi.com>",
+  "contributors": [],
+  "main": "./app.coffee",
+  "dependencies": {
+    "underscore": "1.3.3",
+    "jsdom": "*",
+    "express": "2.5.5",
+    "express-namespace": "0.0.4",
+    "express-params": "*",
+    "winston": "*",
+    "request": "*",
+    "prettyjson": "*",
+    "xml2json": "*",
+    "nodetime": "*",
+    "argue": "*",
+    "async": "*",
+    "coffee-resque": "*",
+    "datejs": "*",
+    "each": "*"
+  },
+  "devDependencies": {
+    "mocha": "*",
+    "should": "*",
+    "docco": "*"
+  },
+  "bin": {}
 }

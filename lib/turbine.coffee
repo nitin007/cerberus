@@ -198,7 +198,8 @@ class Turbine
         # `engine` is a clone of `http` or `https`; since it is no
         # longer needed and since next time we'll just clone it again
         # delete it here.
-        delete engine
+        # delete engine
+        engine = null
 
         # This functionality is brought to you by the `Cookie` module.
         if _.has response.headers, 'set-cookie'
@@ -235,18 +236,21 @@ class Turbine
               , req.success
 
               # response was cloned, delete it since we're done.
-              delete response
+              # delete response
+              response = null
           else
             winston.error 'too many redirects'
             process.nextTick -> 
               req.success {error: 'Too Many Redirects'}, response, response.body
               # response was cloned, delete it since we're done.
-              delete response
+              response = null
+              # delete response
         else
           process.nextTick -> 
             req.success null, response, response.body
             # response was cloned, delete it since we're done.
-            delete response
+            response = null
+            # delete response
       
     req.req.setTimeout req.timeout
     req.req.on 'error', (e) ->

@@ -75,6 +75,7 @@ class xbox_page
       payload: undefined
 
     # called: xbox_page.request 'http://example.com'
+    console.log args
     if args.length is 1 and _.isString args[0]
       return winston.error 'callback required'
     else if args.length is 2 and _.isFunction args[1]
