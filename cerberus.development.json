@@ -1,9 +1,43 @@
 {
   "apps" : [
     {
-      "name"      : "WORKERS",
+      "name"      : "XBOX",
       "script"    : "worker.coffee",
-      "watch"     : "true"
+      "watch"     : "true",
+
+      "env" : {
+        "WORKER_TYPE" : "xbox"
+      }
+    },
+    
+    {
+      "name"      : "PLAYSTATION",
+      "script"    : "worker.coffee",
+      "watch"     : "true",
+
+      "env" : {
+        "WORKER_TYPE" : "playstation"
+      }
+    },
+    
+    {
+      "name"      : "STEAM",
+      "script"    : "worker.coffee",
+      "watch"     : "true",
+
+      "env" : {
+        "WORKER_TYPE" : "steam"
+      }
+    },
+    
+    {
+      "name"      : "NOTIFIER",
+      "script"    : "worker.coffee",
+      "watch"     : "true",
+
+      "env" : {
+        "WORKER_TYPE" : "notifier"
+      }
     },
   
     {
@@ -12,10 +46,6 @@
       "watch"     : "true"
     }
   ],
-  
-  "env" : {
-    "NODE_ENV": "development"
-  },
   
   "deploy" : {
     "production" : {
