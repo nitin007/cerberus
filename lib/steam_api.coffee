@@ -254,16 +254,23 @@ class steam_api
         logger.profile profiler_identifier
         return cb err, {}
 
-      url = "http://steamcommunity.com/profiles/#{steam_id}/stats/#{friendlyURL}?xml=1"
+      query =
+        appid: friendlyURL
+        key: @api_key
+        steamid: steam_id
+        
+      url = @url_prefix + '/ISteamUserStats/GetSchemaForGame/v2?' + qs.stringify(query)
+      # url = "http://steamcommunity.com/profiles/#{steam_id}/stats/#{friendlyURL}?xml=1"
       Turbine url, (err, res, body) ->
         if err
           logger.error 'unable to get steam achievements', err
           logger.profile profiler_identifier
           return cb err, {}
         try
-          json = JSON.parse parser.toJson body
+          json = JSON.parse body
           data = []
-          achievements = json?.playerstats?.achievements.achievement or []
+          # achievements = json?.playerstats?.achievements.achievement or []
+          achievements = json?.game?.availableGameStats?.achievements or []
         
           for achievement in achievements
             achieved = if achievement.closed is 1 or achievement.closed is "1" then yes else no
@@ -271,9 +278,9 @@ class steam_api
               earned: achieved
               earned_date: if achieved then achievement.unlockTimestamp else undefined
               name: achievement.name
-              tile: achievement.iconClosed
+              tile: achievement.icon
               description: achievement.description
-              apiname: achievement.apiname
+              apiname: achievement.name
 
           logger.info "Achievements for #{friendlyURL} - user: #{player} - count: #{achievements.length}"
           process.nextTick -> cb null, data
